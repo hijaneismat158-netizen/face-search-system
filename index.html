@@ -63,9 +63,10 @@ const imageDatabase = [
 // 2. LOAD MODELS
 // =====================
 Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models"),
-  faceapi.nets.faceLandmark68Net.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models"),
-  faceapi.nets.faceRecognitionNet.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models")
+ Promise.all([
+  faceapi.nets.ssdMobilenetv1.loadFromUri("https://justadudewhohacks.github.io/face-api.js/models"),
+  faceapi.nets.faceLandmark68Net.loadFromUri("https://justadudewhohacks.github.io/face-api.js/models"),
+  faceapi.nets.faceRecognitionNet.loadFromUri("https://justadudewhohacks.github.io/face-api.js/models")
 ]).then(startSystem);
 
 // =====================
