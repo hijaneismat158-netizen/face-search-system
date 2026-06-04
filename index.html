@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Face Search System</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #f2f2f2;
+    }
+
+    .box {
+      background: white;
+      padding: 20px;
+      margin: 20px auto;
+      width: 80%;
+      border-radius: 10px;
+    }
+
+    img {
+      width: 150px;
+      margin: 5px;
+      border-radius: 10px;
+    }
+
+    #results {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🔍 Face Search System</h1>
+
+<div class="box">
+  <p>Upload your face:</p>
+  <input type="file" id="uploadInput" />
+</div>
+
+<div class="box">
+  <h3>Results</h3>
+  <div id="results"></div>
+</div>
+
+<script>
+
+// =====================
+// 1. IMAGE DATABASE
+// =====================
+// 🔥 PUT YOUR GOOGLE DRIVE DIRECT IMAGE LINKS HERE
+const imageDatabase = [
+  "https://i.imgur.com/1.jpg",
+  "https://i.imgur.com/2.jpg",
+  "https://i.imgur.com/3.jpg"
+];
+
+// =====================
+// 2. LOAD MODELS
+// =====================
+Promise.all([
+  faceapi.nets.ssdMobilenetv1.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models"),
+  faceapi.nets.faceLandmark68Net.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models"),
+  faceapi.nets.faceRecognitionNet.loadFromUri("https://cdn.jsdelivr.net/npm/face-api.js/models")
+]).then(startSystem);
+
+// =====================
+// 3. BUILD FACE DATABASE
+// =====================
+let labeledDescriptors = [];
+
+async function startSystem() {
+  console.log("Models Loaded");
+
+  for (let imgUrl of imageDatabase) {
+    try {
+      const img = await faceapi.fetchImage(imgUrl);
+      const detections = await faceapi.detectSingleFace(img)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (detections) {
+        labeledDescriptors.push({
+          url: imgUrl,
+          descriptor: detections.descriptor
+        });
+      }
+    } catch (err) {
+      console.log("Error loading image:", imgUrl);
+    }
+  }
+
+  console.log("Database Ready");
+}
+
+// =====================
+// 4. FACE SEARCH
+// =====================
+document.getElementById("uploadInput").addEventListener("change", async function () {
+
+  const file = this.files[0];
+  const img = await faceapi.bufferToImage(file);
+
+  const detection = await faceapi.detectSingleFace(img)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    alert("No face detected!");
+    return;
+  }
+
+  const queryDescriptor = detection.descriptor;
+
+  let results = [];
+
+  for (let item of labeledDescriptors) {
+    const distance = faceapi.euclideanDistance(queryDescriptor, item.descriptor);
+
+    if (distance < 0.6) {
+      results.push(item.url);
+    }
+  }
+
+  showResults(results);
+});
+
+// =====================
+// 5. SHOW RESULTS
+// =====================
+function showResults(images) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  if (images.length === 0) {
+    container.innerHTML = "<p>No match found</p>";
+    return;
+  }
+
+  images.forEach(url => {
+    const img = document.createElement("img");
+    img.src = url;
+    container.appendChild(img);
+  });
+}
+
+</script>
+
+</body>
+</html>
