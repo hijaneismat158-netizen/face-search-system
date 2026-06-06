@@ -1,132 +1,25 @@
-console.log("SCRIPT LOADED");
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Face Search System</title>
+</head>
 
-const imageDatabase = [
-  "./images/827A0231.jpg",
-  "./images/DSC_0493.jpg"
-];
+<body>
 
-let labeledDescriptors = [];
+<h1>🔍 Face Search System</h1>
 
-// =====================
-// LOAD MODELS
-// =====================
-Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFromUri('./models'),
-  faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
-  faceapi.nets.faceRecognitionNet.loadFromUri('./models')
-])
-.then(() => {
-  console.log("MODELS LOADED");
-  startSystem();
-})
-.catch(err => console.log("MODEL ERROR:", err));
+<input type="file" id="uploadInput" />
 
+<div>
+  <h3>Results</h3>
+  <div id="results"></div>
+</div>
 
-// =====================
-// BUILD DATABASE
-// =====================
-async function startSystem() {
+<!-- face-api.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-  console.log("START SYSTEM");
+<!-- YOUR SCRIPT FILE -->
+<script defer src="script.js"></script>
 
-  for (let imgUrl of imageDatabase) {
-    console.log("PROCESS:", imgUrl);
-
-    try {
-      const img = await faceapi.fetchImage(imgUrl);
-
-      const detection = await faceapi
-        .detectSingleFace(img)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (detection) {
-        labeledDescriptors.push({
-          url: imgUrl,
-          descriptor: detection.descriptor
-        });
-
-        console.log("FACE ADDED:", imgUrl);
-      } else {
-        console.log("NO FACE:", imgUrl);
-      }
-
-    } catch (err) {
-      console.log("ERROR IMAGE:", imgUrl, err);
-    }
-  }
-
-  console.log("DATABASE READY:", labeledDescriptors.length);
-}
-
-
-// =====================
-// SEARCH FACE
-// =====================
-document.getElementById("uploadInput").addEventListener("change", async function () {
-
-  console.log("UPLOAD START");
-
-  const file = this.files[0];
-
-  const img = await faceapi.bufferToImage(file);
-
-  const detection = await faceapi
-    .detectSingleFace(img)
-    .withFaceLandmarks()
-    .withFaceDescriptor();
-
-  if (!detection) {
-    alert("No face detected!");
-    console.log("UPLOAD FACE FAIL");
-    return;
-  }
-
-  const queryDescriptor = detection.descriptor;
-
-  let bestMatch = null;
-  let bestDistance = 1;
-
-  for (let item of labeledDescriptors) {
-
-    const distance = faceapi.euclideanDistance(
-      queryDescriptor,
-      item.descriptor
-    );
-
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestMatch = item.url;
-    }
-  }
-
-  console.log("BEST DISTANCE:", bestDistance);
-
-  if (bestMatch && bestDistance < 0.75) {
-    showResults([bestMatch]);
-  } else {
-    showResults([]);
-  }
-});
-
-
-// =====================
-// SHOW RESULT
-// =====================
-function showResults(images) {
-
-  const container = document.getElementById("results");
-  container.innerHTML = "";
-
-  if (images.length === 0) {
-    container.innerHTML = "<p>No match found</p>";
-    return;
-  }
-
-  images.forEach(url => {
-    const img = document.createElement("img");
-    img.src = url;
-    img.width = 150;
-    container.appendChild(img);
-  });
-}
+</body>
+</html>
