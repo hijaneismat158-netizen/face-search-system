@@ -1,38 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>STEM Camp Photo Search</title>
+  <title>Face Search System</title>
 </head>
 
 <body>
 
-<h2>Search Gambar Peserta</h2>
+<h2>Face Recognition Gallery</h2>
 
-<p>Masukkan kod gambar (contoh: 827A0504)</p>
+<input type="file" id="imageUpload" multiple />
 
-<input type="text" id="code">
-<button onclick="search()">Cari</button>
+<div id="gallery"></div>
 
-<br><br>
+<!-- face-api.js CDN -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-<div id="result"></div>
-
-<script>
-
-function search() {
-
-  let code = document.getElementById("code").value;
-
-  let img = "gallery/" + code + ".jpg";
-
-  document.getElementById("result").innerHTML =
-    "<img src='" + img + "' width='300'>";
-
-}
-
-</script>
+<script defer src="script.js"></script>
 
 </body>
+</html>
 </html>
 
 <h1>🔍 Face Search System</h1>
