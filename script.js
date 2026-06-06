@@ -1,5 +1,10 @@
-const uploadInput = document.getElementById("imageUpload") || document.getElementById("uploadInput");
-const resultsDiv = document.getElementById("results") || document.getElementById("gallery");
+const uploadInput =
+  document.getElementById("imageUpload") ||
+  document.getElementById("uploadInput");
+
+const resultsDiv =
+  document.getElementById("results") ||
+  document.getElementById("gallery");
 
 let labeledDescriptors = [];
 
@@ -10,15 +15,21 @@ Promise.all([
   faceapi.nets.ssdMobilenetv1.loadFromUri("./models"),
   faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
   faceapi.nets.faceRecognitionNet.loadFromUri("./models")
-]).then(startSystem);
+])
+.then(startSystem)
+.catch(err => console.log("Model error:", err));
 
+
+// =====================
+// 2. BUILD DATABASE (LOCAL IMAGES ONLY)
+// =====================
 async function startSystem() {
   console.log("Models Loaded");
 
-  // OPTIONAL: add database images here
+  // 🔥 IMPORTANT: USE LOCAL FILES ONLY
   const imageDatabase = [
-    "https://drive.google.com/uc?export=view&id=FILE_ID_1",
-    "https://drive.google.com/uc?export=view&id=FILE_ID_2"
+    "./images/827A0231.jpg",
+    "./images/DSC_0493.jpg"
   ];
 
   for (let imgUrl of imageDatabase) {
@@ -38,18 +49,21 @@ async function startSystem() {
       }
 
     } catch (err) {
-      console.log("Error loading:", imgUrl);
+      console.log("Error loading image:", imgUrl);
     }
   }
 
   console.log("Database Ready:", labeledDescriptors.length);
 }
 
+
 // =====================
-// 2. UPLOAD & SEARCH FACE
+// 3. FACE SEARCH
 // =====================
 uploadInput.addEventListener("change", async function () {
   const file = this.files[0];
+
+  if (!file) return;
 
   const img = await faceapi.bufferToImage(file);
 
@@ -65,7 +79,8 @@ uploadInput.addEventListener("change", async function () {
 
   const queryDescriptor = detection.descriptor;
 
-  let results = [];
+  let bestMatch = null;
+  let bestDistance = 1;
 
   for (let item of labeledDescriptors) {
     const distance = faceapi.euclideanDistance(
@@ -73,17 +88,22 @@ uploadInput.addEventListener("change", async function () {
       item.descriptor
     );
 
-    // THRESHOLD (IMPORTANT)
-    if (distance < 0.7) {
-      results.push(item.url);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestMatch = item.url;
     }
   }
 
-  showResults(results);
+  if (bestMatch && bestDistance < 0.7) {
+    showResults([bestMatch]);
+  } else {
+    showResults([]);
+  }
 });
 
+
 // =====================
-// 3. SHOW RESULTS
+// 4. SHOW RESULTS
 // =====================
 function showResults(images) {
   resultsDiv.innerHTML = "";
@@ -94,9 +114,18 @@ function showResults(images) {
   }
 
   images.forEach(url => {
+    const box = document.createElement("div");
+
     const img = document.createElement("img");
     img.src = url;
     img.width = 150;
-    resultsDiv.appendChild(img);
+
+    const text = document.createElement("p");
+    text.innerText = "Match Found";
+
+    box.appendChild(img);
+    box.appendChild(text);
+
+    resultsDiv.appendChild(box);
   });
 }
