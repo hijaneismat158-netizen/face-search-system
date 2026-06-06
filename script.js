@@ -5,7 +5,7 @@ console.log("SCRIPT LOADED");
 // =====================
 const imageDatabase = [
   "./images/827A0231.jpg",
-  "./images/DSC_0493.jpg"
+  "./images/DSC8395.jpg"
 ];
 
 // =====================
