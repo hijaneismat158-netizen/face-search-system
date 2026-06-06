@@ -1,43 +1,102 @@
-const imageUpload = document.getElementById('imageUpload');
-const gallery = document.getElementById('gallery');
+const uploadInput = document.getElementById("imageUpload") || document.getElementById("uploadInput");
+const resultsDiv = document.getElementById("results") || document.getElementById("gallery");
 
+let labeledDescriptors = [];
+
+// =====================
+// 1. LOAD MODELS
+// =====================
 Promise.all([
-  faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-  faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
-  faceapi.nets.faceLandmark68Net.loadFromUri('/models')
-]).then(() => {
-  console.log("Models loaded");
-});
+  faceapi.nets.ssdMobilenetv1.loadFromUri("./models"),
+  faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
+  faceapi.nets.faceRecognitionNet.loadFromUri("./models")
+]).then(startSystem);
 
-imageUpload.addEventListener('change', async () => {
-  gallery.innerHTML = "";
+async function startSystem() {
+  console.log("Models Loaded");
 
-  const files = imageUpload.files;
+  // OPTIONAL: add database images here
+  const imageDatabase = [
+    "https://drive.google.com/uc?export=view&id=FILE_ID_1",
+    "https://drive.google.com/uc?export=view&id=FILE_ID_2"
+  ];
 
-  for (let file of files) {
-    const img = await loadImage(file);
-    gallery.appendChild(img);
+  for (let imgUrl of imageDatabase) {
+    try {
+      const img = await faceapi.fetchImage(imgUrl);
 
-    const detections = await faceapi.detectAllFaces(
-      img,
-      new faceapi.TinyFaceDetectorOptions()
+      const detection = await faceapi
+        .detectSingleFace(img)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (detection) {
+        labeledDescriptors.push({
+          url: imgUrl,
+          descriptor: detection.descriptor
+        });
+      }
+
+    } catch (err) {
+      console.log("Error loading:", imgUrl);
+    }
+  }
+
+  console.log("Database Ready:", labeledDescriptors.length);
+}
+
+// =====================
+// 2. UPLOAD & SEARCH FACE
+// =====================
+uploadInput.addEventListener("change", async function () {
+  const file = this.files[0];
+
+  const img = await faceapi.bufferToImage(file);
+
+  const detection = await faceapi
+    .detectSingleFace(img)
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    alert("No face detected!");
+    return;
+  }
+
+  const queryDescriptor = detection.descriptor;
+
+  let results = [];
+
+  for (let item of labeledDescriptors) {
+    const distance = faceapi.euclideanDistance(
+      queryDescriptor,
+      item.descriptor
     );
 
-    const canvas = faceapi.createCanvasFromMedia(img);
-    gallery.appendChild(canvas);
-
-    faceapi.matchDimensions(canvas, img);
-
-    const resized = faceapi.resizeResults(detections, img);
-    faceapi.draw.drawDetections(canvas, resized);
+    // THRESHOLD (IMPORTANT)
+    if (distance < 0.7) {
+      results.push(item.url);
+    }
   }
+
+  showResults(results);
 });
 
-function loadImage(file) {
-  return new Promise((resolve) => {
-    const img = document.createElement('img');
-    img.width = 200;
-    img.src = URL.createObjectURL(file);
-    img.onload = () => resolve(img);
+// =====================
+// 3. SHOW RESULTS
+// =====================
+function showResults(images) {
+  resultsDiv.innerHTML = "";
+
+  if (images.length === 0) {
+    resultsDiv.innerHTML = "<p>No match found</p>";
+    return;
+  }
+
+  images.forEach(url => {
+    const img = document.createElement("img");
+    img.src = url;
+    img.width = 150;
+    resultsDiv.appendChild(img);
   });
 }
