@@ -6,59 +6,31 @@
 
 <body>
 
-<h2>Face Recognition Gallery</h2>
-
-<input type="file" id="imageUpload" multiple />
-
-<div id="gallery"></div>
-
-<!-- face-api.js CDN -->
-<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-
-<script defer src="script.js"></script>
-
-</body>
-</html>
-</html>
-
 <h1>🔍 Face Search System</h1>
 
-<div class="box">
-  <p>Upload your face:</p>
-  <input type="file" id="uploadInput" />
-</div>
+<input type="file" id="uploadInput" />
 
-<div class="box">
+<div>
   <h3>Results</h3>
   <div id="results"></div>
 </div>
 
-<script>
+<!-- face-api.js CDN -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
-// =====================
-// 1. IMAGE DATABASE
-// =====================
-// 🔥 PUT YOUR GOOGLE DRIVE DIRECT IMAGE LINKS HERE
+<script>
 const imageDatabase = [
   "https://drive.google.com/uc?export=view&id=FILE_ID_1",
   "https://drive.google.com/uc?export=view&id=FILE_ID_2"
 ];
-];
 
-// =====================
-// 2. LOAD MODELS
-// =====================
-Promise.all([
- Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFrom Uri (https://justadudewhohacks.github.io/face-api.js/models,)
-  faceapi.nets.faceLandmark68Net.loadFrom Uri (https://justadudewhohacks.github.io/face-api.js/models,)
-  faceapi.nets.faceRecognitionNet.loadFrom Uri (https://justadudewhohacks.github.io/face-api.js/models)
-]).then(startSystem);
-
-// =====================
-// 3. BUILD FACE DATABASE
-// =====================
 let labeledDescriptors = [];
+
+Promise.all([
+  faceapi.nets.ssdMobilenetv1.loadFromUri('./models'),
+  faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
+  faceapi.nets.faceRecognitionNet.loadFromUri('./models')
+]).then(startSystem);
 
 async function startSystem() {
   console.log("Models Loaded");
@@ -66,33 +38,34 @@ async function startSystem() {
   for (let imgUrl of imageDatabase) {
     try {
       const img = await faceapi.fetchImage(imgUrl);
-      const detections = await faceapi.detectSingleFace(img)
+
+      const detection = await faceapi
+        .detectSingleFace(img)
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      if (detections) {
+      if (detection) {
         labeledDescriptors.push({
           url: imgUrl,
-          descriptor: detections.descriptor
+          descriptor: detection.descriptor
         });
       }
+
     } catch (err) {
-      console.log("Error loading image:", imgUrl);
+      console.log("Error:", imgUrl);
     }
   }
 
   console.log("Database Ready");
 }
 
-// =====================
-// 4. FACE SEARCH
-// =====================
 document.getElementById("uploadInput").addEventListener("change", async function () {
 
   const file = this.files[0];
   const img = await faceapi.bufferToImage(file);
 
-  const detection = await faceapi.detectSingleFace(img)
+  const detection = await faceapi
+    .detectSingleFace(img)
     .withFaceLandmarks()
     .withFaceDescriptor();
 
@@ -116,9 +89,6 @@ document.getElementById("uploadInput").addEventListener("change", async function
   showResults(results);
 });
 
-// =====================
-// 5. SHOW RESULTS
-// =====================
 function showResults(images) {
   const container = document.getElementById("results");
   container.innerHTML = "";
@@ -131,10 +101,10 @@ function showResults(images) {
   images.forEach(url => {
     const img = document.createElement("img");
     img.src = url;
+    img.width = 150;
     container.appendChild(img);
   });
 }
-
 </script>
 
 </body>
