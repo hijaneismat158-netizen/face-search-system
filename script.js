@@ -15,18 +15,16 @@ Promise.all([
   faceapi.nets.ssdMobilenetv1.loadFromUri("./models"),
   faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
   faceapi.nets.faceRecognitionNet.loadFromUri("./models")
-])
-.then(startSystem)
-.catch(err => console.log("Model error:", err));
+]).then(startSystem)
+  .catch(err => console.log("Model error:", err));
 
 
 // =====================
-// 2. BUILD DATABASE (LOCAL IMAGES ONLY)
+// 2. BUILD DATABASE
 // =====================
 async function startSystem() {
   console.log("Models Loaded");
 
-  // 🔥 IMPORTANT: USE LOCAL FILES ONLY
   const imageDatabase = [
     "./images/827A0231.jpg",
     "./images/DSC_0493.jpg"
@@ -34,22 +32,28 @@ async function startSystem() {
 
   for (let imgUrl of imageDatabase) {
     try {
+      console.log("Processing:", imgUrl);
+
       const img = await faceapi.fetchImage(imgUrl);
 
       const detection = await faceapi
-        .detectSingleFace(img)
+        .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-      if (detection) {
+      if (detection && detection.descriptor) {
         labeledDescriptors.push({
           url: imgUrl,
           descriptor: detection.descriptor
         });
+
+        console.log("Face added:", imgUrl);
+      } else {
+        console.log("No face detected in:", imgUrl);
       }
 
     } catch (err) {
-      console.log("Error loading image:", imgUrl);
+      console.log("Error loading image:", imgUrl, err);
     }
   }
 
@@ -58,22 +62,21 @@ async function startSystem() {
 
 
 // =====================
-// 3. FACE SEARCH
+// 3. SEARCH FACE
 // =====================
 uploadInput.addEventListener("change", async function () {
   const file = this.files[0];
-
   if (!file) return;
 
   const img = await faceapi.bufferToImage(file);
 
   const detection = await faceapi
-    .detectSingleFace(img)
+    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
 
   if (!detection) {
-    alert("No face detected!");
+    alert("No face detected in upload!");
     return;
   }
 
@@ -94,7 +97,9 @@ uploadInput.addEventListener("change", async function () {
     }
   }
 
-  if (bestMatch && bestDistance < 0.7) {
+  console.log("Best distance:", bestDistance);
+
+  if (bestMatch && bestDistance < 0.75) {
     showResults([bestMatch]);
   } else {
     showResults([]);
