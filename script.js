@@ -1,136 +1,73 @@
-const uploadInput =
-  document.getElementById("imageUpload") ||
-  document.getElementById("uploadInput");
+console.log("SCRIPT LOADED");
 
-const resultsDiv =
-  document.getElementById("results") ||
-  document.getElementById("gallery");
+// =====================
+// IMAGE DATABASE
+// =====================
+const imageDatabase = [
+  "./images/827A0231.jpg",
+  "./images/DSC_0493.jpg"
+];
 
+// =====================
+// STORAGE
+// =====================
 let labeledDescriptors = [];
 
 // =====================
-// 1. LOAD MODELS
+// LOAD MODELS (IMPORTANT)
 // =====================
-Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFromUri("./models"),
-  faceapi.nets.faceLandmark68Net.loadFromUri("./models"),
-  faceapi.nets.faceRecognitionNet.loadFromUri("./models")
-]).then(startSystem)
-  .catch(err => console.log("Model error:", err));
+async function loadModels() {
+  await faceapi.nets.ssdMobilenetv1.loadFromUri('./models');
+  await faceapi.nets.faceLandmark68Net.loadFromUri('./models');
+  await faceapi.nets.faceRecognitionNet.loadFromUri('./models');
 
+  console.log("Models loaded");
+}
 
 // =====================
-// 2. BUILD DATABASE
+// LOAD IMAGE & GET FACE DESCRIPTOR
 // =====================
-async function startSystem() {
-  console.log("Models Loaded");
+async function getLabeledFaceDescriptions() {
+  const labels = ["person"]; // boleh tambah nama later
 
-  const imageDatabase = [
-    "./images/827A0231.jpg",
-    "./images/DSC_0493.jpg"
-  ];
+  return Promise.all(
+    labels.map(async (label) => {
 
-  for (let imgUrl of imageDatabase) {
-    try {
-      console.log("Processing:", imgUrl);
+      const descriptions = [];
 
-      const img = await faceapi.fetchImage(imgUrl);
+      for (let imgPath of imageDatabase) {
+        const img = await faceapi.fetchImage(imgPath);
 
-      const detection = await faceapi
-        .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+        const detections = await faceapi
+          .detectSingleFace(img)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
 
-      if (detection && detection.descriptor) {
-        labeledDescriptors.push({
-          url: imgUrl,
-          descriptor: detection.descriptor
-        });
-
-        console.log("Face added:", imgUrl);
-      } else {
-        console.log("No face detected in:", imgUrl);
+        if (detections) {
+          descriptions.push(detections.descriptor);
+        }
       }
 
-    } catch (err) {
-      console.log("Error loading image:", imgUrl, err);
-    }
-  }
+      console.log(`${label} descriptors:`, descriptions.length);
 
-  console.log("Database Ready:", labeledDescriptors.length);
+      return new faceapi.LabeledFaceDescriptors(label, descriptions);
+    })
+  );
 }
 
-
 // =====================
-// 3. SEARCH FACE
+// MAIN RUN
 // =====================
-uploadInput.addEventListener("change", async function () {
-  const file = this.files[0];
-  if (!file) return;
+async function start() {
+  await loadModels();
 
-  const img = await faceapi.bufferToImage(file);
+  labeledDescriptors = await getLabeledFaceDescriptions();
 
-  const detection = await faceapi
-    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-    .withFaceLandmarks()
-    .withFaceDescriptor();
+  console.log("TOTAL LABELS:", labeledDescriptors.length);
 
-  if (!detection) {
-    alert("No face detected in upload!");
-    return;
-  }
+  const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
 
-  const queryDescriptor = detection.descriptor;
-
-  let bestMatch = null;
-  let bestDistance = 1;
-
-  for (let item of labeledDescriptors) {
-    const distance = faceapi.euclideanDistance(
-      queryDescriptor,
-      item.descriptor
-    );
-
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestMatch = item.url;
-    }
-  }
-
-  console.log("Best distance:", bestDistance);
-
-  if (bestMatch && bestDistance < 0.8) {
-    showResults([bestMatch]);
-  } else {
-    showResults([]);
-  }
-});
-
-
-// =====================
-// 4. SHOW RESULTS
-// =====================
-function showResults(images) {
-  resultsDiv.innerHTML = "";
-
-  if (images.length === 0) {
-    resultsDiv.innerHTML = "<p>No match found</p>";
-    return;
-  }
-
-  images.forEach(url => {
-    const box = document.createElement("div");
-
-    const img = document.createElement("img");
-    img.src = url;
-    img.width = 150;
-
-    const text = document.createElement("p");
-    text.innerText = "Match Found";
-
-    box.appendChild(img);
-    box.appendChild(text);
-
-    resultsDiv.appendChild(box);
-  });
+  console.log("Face matcher ready");
 }
+
+start();
