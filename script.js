@@ -99,7 +99,7 @@ uploadInput.addEventListener("change", async function () {
 
   console.log("Best distance:", bestDistance);
 
-  if (bestMatch && bestDistance < 0.75) {
+  if (bestMatch && bestDistance < 0.8) {
     showResults([bestMatch]);
   } else {
     showResults([]);
